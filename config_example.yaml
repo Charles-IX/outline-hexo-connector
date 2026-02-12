@@ -1,0 +1,5 @@
+Outline_API_Key: some_api_key
+Outline_API_URL: https://outline.example.com/api
+Outline_Webhook_Secret: some_webhook_secret
+Outline_Collection_Used_For_Blog: Blog
+Hexo_Build_Timeout: 30
