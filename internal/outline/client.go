@@ -152,19 +152,25 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch webhook.Event {
 	case "documents.create":
 		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
-		// TODO:
-		// Outline sends this whenever a document is created, and is always
-		// followed by a documents.publish event. The following event
-		// must be ignored, for we don't want to trigger a Hexo build when
-		// the document is empty.
+		c.justCreatedDocs.Store(webhook.Payload.Model.ID, true)
+		go c.unpublishDocument(webhook.Payload.Model.ID)
+		time.AfterFunc(time.Second*10, func() {
+			c.justCreatedDocs.Delete(webhook.Payload.Model.ID)
+		})
 
 	case "documents.publish":
+		_, justCreated := c.justCreatedDocs.Load(webhook.Payload.Model.ID)
+		if justCreated {
+			log.Printf("Document just created - Ignoring publish event")
+			c.justCreatedDocs.Delete(webhook.Payload.Model.ID)
+			return
+		}
 		fallthrough
 	case "documents.unarchive":
 		fallthrough
 	case "documents.restore":
 		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
-		Blog := &Document{
+		blog := &Document{
 			ID:        webhook.Payload.Model.ID,
 			Title:     webhook.Payload.Model.Title,
 			Text:      webhook.Payload.Model.Text,
@@ -172,7 +178,7 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt: webhook.Payload.Model.UpdatedAt,
 			Category:  webhook.Payload.Model.ParentDocument.Title,
 		}
-		log.Printf("Document published - ID: %s, Title: %s, Category: %s", Blog.ID, Blog.Title, Blog.Category)
+		log.Printf("Document published - ID: %s, Title: %s, Category: %s", blog.ID, blog.Title, blog.Category)
 		// TODO:
 		// Add the corresponding .md then trigger Hexo build. Or better,
 		// put it in a queue for a periodical Hexo build to consume.
@@ -293,6 +299,11 @@ func (c *Client) GetAttachmentUrl(id string) (string, error) {
 	location := resp.Header.Get("Location")
 	if location == "" {
 		return "", fmt.Errorf("Missing Location header in API response")
+	}
+
+	// Cut off S3 presigned part, the bucket should be public-readable
+	if index := strings.Index(location, "?"); index != -1 {
+		return location[:index], nil
 	}
 	return location, nil
 }
