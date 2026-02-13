@@ -183,7 +183,7 @@ Then trigger a test event from Outline, and you will see the complete request co
 
 - [ ] Complete Hexo adapter implementation
 - [ ] Implement full document-to-Markdown conversion
-- [ ] Add attachment URL conversion functionality
+- [x] Add attachment URL conversion functionality (convert from Outline API URL to OSS permanent URL)
 - [ ] Implement Hexo build triggering on document publish/delete
 - [ ] Add document queue mechanism for periodic batch builds
 - [ ] Add unit tests
