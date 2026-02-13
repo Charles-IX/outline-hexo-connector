@@ -1,4 +1,4 @@
-module outline-webhook
+module outline-hexo-connector
 
 go 1.21
 

@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 	"net/http"
-	"outline-webhook/internal/config"
-	"outline-webhook/internal/outline"
-	"outline-webhook/internal/test"
+	"outline-hexo-connector/internal/config"
+	"outline-hexo-connector/internal/outline"
+	"outline-hexo-connector/internal/test"
 
 	flag "github.com/spf13/pflag"
 )

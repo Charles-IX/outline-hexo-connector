@@ -10,7 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"outline-webhook/internal/config"
+	"outline-hexo-connector/internal/config"
 	"strconv"
 	"strings"
 	"time"
