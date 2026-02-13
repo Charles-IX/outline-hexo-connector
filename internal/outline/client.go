@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"outline-hexo-connector/internal/config"
+	"outline-hexo-connector/internal/hexo"
 	"outline-hexo-connector/internal/processor"
 	"strconv"
 	"strings"
@@ -174,21 +175,26 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "documents.restore":
 		c.logWebhook(webhook)
 
-		blog := &Document{
-			ID:        webhook.Payload.Model.ID,
-			Title:     webhook.Payload.Model.Title,
-			Text:      webhook.Payload.Model.Text,
-			CreatedAt: webhook.Payload.Model.CreatedAt,
-			UpdatedAt: webhook.Payload.Model.UpdatedAt,
-			Category:  webhook.Payload.Model.ParentDocument.Title,
+		post := &hexo.Post{
+			ID:       webhook.Payload.Model.ID,
+			Title:    webhook.Payload.Model.Title,
+			Date:     webhook.Payload.Model.CreatedAt,
+			Updated:  webhook.Payload.Model.UpdatedAt,
+			Category: webhook.Payload.Model.ParentDocument.Title,
+			Content:  webhook.Payload.Model.Text,
 		}
-		blog.Text, err = processor.ConvertAttachmentUrl(c, blog.Text)
+		post.Content, err = processor.ConvertAttachmentUrl(c, post.Content)
 		if err != nil {
 			log.Printf("Error converting attachment URLs - %v", err)
 			return
 		}
+		metadataAndText := processor.ExtractMetadataAndText(post.Content)
+		post.BannerImg = metadataAndText.BannerImg
+		post.IndexImg = metadataAndText.IndexImg
+		post.Tags = metadataAndText.Tags
+		post.Content = metadataAndText.Text
 
-		fmt.Printf("Converted blog content:\n%s\n", blog.Text)
+		fmt.Printf("Converted blog content:\n%s\n", post.Content)
 		// TODO:
 		// Add the corresponding .md then trigger Hexo build. Or better,
 		// put it in a queue for a periodical Hexo build to consume.
@@ -212,10 +218,15 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "documents.update":
 		return
 		// TODO:
-		// Am I really going to do shit about this?
-		// If really, who is going to validate whether the document is ready
-		// for publishing to Hexo or not?
-		// Or I'm just too drowsy.
+		// It's simple. Just treat it as a create event, and send documents.unpublish
+		// to Outline API so that we don't send some draft version to Hexo.
+		// Let draft be draft. But are we going to unpublish it in Hexo?
+		// If implemented, we can use documents.archive
+		// Or documets.move or documents.delete to unpublish in Hexo.
+		// Drafts also send documents.update event. But draft's webhook has "publishedAt": null
+		// We can use that to identify a draft.
+
+		// Thankfully one cannot update an archived document, so no need to check that.
 
 	// TODO:
 	// Better do something to handle documents.move and documents.title_change.

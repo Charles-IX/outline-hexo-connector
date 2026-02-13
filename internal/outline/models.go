@@ -18,6 +18,7 @@ type DocumentPayload struct {
 	Text             string `json:"text"`
 	CreatedAt        string `json:"createdAt"`
 	UpdatedAt        string `json:"updatedAt"`
+	PublishedAt      string `json:"publishedAt"`
 	CollectionID     string `json:"collectionId"`
 	ParentDocumentID string `json:"parentDocumentId"`
 	ParentDocument   *DocumentPayload
