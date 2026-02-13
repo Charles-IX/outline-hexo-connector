@@ -3,25 +3,24 @@ package processor
 import (
 	"fmt"
 	"log"
-	"outline-hexo-connector/internal/outline"
 	"regexp"
 )
 
 type AttachmentUrlProvider interface {
-	GetAttachmentURL(attachmentID string) (string, error)
+	GetAttachmentUrl(attachmentID string) (string, error)
 }
 
-func convertAttachmentUrl(provider AttachmentUrlProvider, blog *outline.Document) (*outline.Document, error) {
+func ConvertAttachmentUrl(provider AttachmentUrlProvider, text string) (string, error) {
 	// Some regex magic to find outline attachment urls
 	re := regexp.MustCompile(`(?P<prefix>!?)\[(?P<text>.*?)\]\(/api/attachments\.redirect\?id=(?P<id>[a-f0-9-]{36})(?P<extra>.*?)\)`)
 
-	newText := re.ReplaceAllStringFunc(blog.Text, func(match string) string {
+	newText := re.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := re.FindStringSubmatch(match)
 		prefix := submatches[1]
 		text := submatches[2]
 		id := submatches[3]
 
-		rawUrl, err := provider.GetAttachmentURL(id)
+		rawUrl, err := provider.GetAttachmentUrl(id)
 		if err != nil {
 			log.Printf("Error getting attachment OSS URL - %v", err)
 			return match
@@ -34,8 +33,8 @@ func convertAttachmentUrl(provider AttachmentUrlProvider, blog *outline.Document
 	})
 
 	reExtra := regexp.MustCompile(`\s+\\"=?\d*x?\d*\\"`)
-	blog.Text = reExtra.ReplaceAllString(newText, "")
+	text = reExtra.ReplaceAllString(newText, "")
 
-	return blog, nil
+	return text, nil
 
 }

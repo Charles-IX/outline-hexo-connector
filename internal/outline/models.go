@@ -21,6 +21,7 @@ type DocumentPayload struct {
 	CollectionID     string `json:"collectionId"`
 	ParentDocumentID string `json:"parentDocumentId"`
 	ParentDocument   *DocumentPayload
+	Collection       *CollectionPayload
 }
 
 type CollectionPayload struct {

@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"outline-hexo-connector/internal/config"
+	"outline-hexo-connector/internal/processor"
 	"strconv"
 	"strings"
 	"sync"
@@ -94,9 +95,14 @@ func (c *Client) parseWebhook(body []byte) (*Webhook, error) {
 	return &webhook, nil
 }
 
-func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
+func (c *Client) logWebhook(webhook *Webhook) {
 	log.Println("Received webhook request:")
+	fmt.Printf("Event: %s\nDocument ID: %s\nDocument Title: %s\n", webhook.Event, webhook.Payload.Model.ID, webhook.Payload.Model.Title)
+	fmt.Printf("Parent Name: %s\n", webhook.Payload.Model.ParentDocument.Title)
+	fmt.Printf("Collection Name: %s\n", webhook.Payload.Model.Collection.Name)
+}
 
+func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 10*1024*1024))
 	if err != nil {
 		log.Printf("Error reading webhook - %v", err)
@@ -118,7 +124,6 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Event: %s\nDocument ID: %s\nDocument Title: %s\n", webhook.Event, webhook.Payload.Model.ID, webhook.Payload.Model.Title)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Acknowledged"))
 
@@ -129,29 +134,28 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		webhook.Payload.Model.ParentDocument = &parentDocument
-
 	} else {
 		webhook.Payload.Model.ParentDocument = &DocumentPayload{
 			Title: "null",
 		}
 	}
-	fmt.Printf("Parent Name: %s\n", webhook.Payload.Model.ParentDocument.Title)
 
 	collection, err := c.GetCollection(webhook.Payload.Model.CollectionID)
+	webhook.Payload.Model.Collection = &collection
 	if err != nil {
 		log.Printf("Error fetching collection info - %v", err)
 		return
 	}
-	fmt.Printf("Collection Name: %s\n", collection.Name)
 
 	if collection.Name != c.cfg.OutlineCollectionUsedForBlog {
-		log.Printf("Not desired collection - Skipping")
+		// log.Printf("Not desired collection - Skipping")
+		// Commented out to reduce log noise
 		return
 	}
 
 	switch webhook.Event {
 	case "documents.create":
-		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
+		c.logWebhook(webhook)
 		c.justCreatedDocs.Store(webhook.Payload.Model.ID, true)
 		go c.unpublishDocument(webhook.Payload.Model.ID)
 		time.AfterFunc(time.Second*10, func() {
@@ -162,14 +166,14 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		_, justCreated := c.justCreatedDocs.Load(webhook.Payload.Model.ID)
 		if justCreated {
 			log.Printf("Document just created - Ignoring publish event")
-			c.justCreatedDocs.Delete(webhook.Payload.Model.ID)
 			return
 		}
 		fallthrough
 	case "documents.unarchive":
 		fallthrough
 	case "documents.restore":
-		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
+		c.logWebhook(webhook)
+
 		blog := &Document{
 			ID:        webhook.Payload.Model.ID,
 			Title:     webhook.Payload.Model.Title,
@@ -178,12 +182,24 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt: webhook.Payload.Model.UpdatedAt,
 			Category:  webhook.Payload.Model.ParentDocument.Title,
 		}
-		log.Printf("Document published - ID: %s, Title: %s, Category: %s", blog.ID, blog.Title, blog.Category)
+		blog.Text, err = processor.ConvertAttachmentUrl(c, blog.Text)
+		if err != nil {
+			log.Printf("Error converting attachment URLs - %v", err)
+			return
+		}
+
+		fmt.Printf("Converted blog content:\n%s\n", blog.Text)
 		// TODO:
 		// Add the corresponding .md then trigger Hexo build. Or better,
 		// put it in a queue for a periodical Hexo build to consume.
 
 	case "documents.unpublish":
+		_, justCreated := c.justCreatedDocs.Load(webhook.Payload.Model.ID)
+		if justCreated {
+			log.Printf("Document just created - Ignoring unpublish event")
+			c.justCreatedDocs.Delete(webhook.Payload.Model.ID)
+			return
+		}
 		fallthrough
 	case "documents.archive":
 		fallthrough
@@ -194,11 +210,11 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		// and wait for the periodical Hexo build to consume.
 
 	case "documents.update":
-		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
+		return
 		// TODO:
 		// Am I really going to do shit about this?
 		// If really, who is going to validate whether the document is ready
-		// for publishing to Hexo?
+		// for publishing to Hexo or not?
 		// Or I'm just too drowsy.
 
 	// TODO:
