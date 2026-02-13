@@ -66,7 +66,7 @@ func (c *Client) verifyWebhook(body []byte, signatureHeader string) error {
 
 	ms, err := strconv.ParseInt(t, 10, 64)
 	if err != nil {
-		return fmt.Errorf("Invalid timestamp format in signature header - %w", err)
+		return err
 	}
 	timestamp := time.UnixMilli(ms)
 	diff := time.Since(timestamp)
@@ -244,12 +244,12 @@ func (c *Client) newRequest(endpoint string, reqPayload any) (*http.Request, err
 	encoder := json.NewEncoder(&buf)
 	err := encoder.Encode(reqPayload)
 	if err != nil {
-		return nil, fmt.Errorf("Error encoding request payload - %w", err)
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", c.cfg.OutlineAPIURL+endpoint, &buf)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating request - %w", err)
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.cfg.OutlineAPIKey)
@@ -267,7 +267,7 @@ func getInfoByID[T any](c *Client, endpoint string, id string) (T, error) {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return zero, fmt.Errorf("Error requesting Outline API - %w", err)
+		return zero, err
 	}
 	defer resp.Body.Close()
 
@@ -276,7 +276,7 @@ func getInfoByID[T any](c *Client, endpoint string, id string) (T, error) {
 		decoder := json.NewDecoder(resp.Body)
 		err = decoder.Decode(&apiErr)
 		if err != nil {
-			return zero, fmt.Errorf("Error decoding API error response - %w", err)
+			return zero, err
 		}
 		return zero, fmt.Errorf("Unexpected API http status - %d, %s", resp.StatusCode, apiErr.Error())
 	}
@@ -287,7 +287,7 @@ func getInfoByID[T any](c *Client, endpoint string, id string) (T, error) {
 	decoder := json.NewDecoder(resp.Body)
 	err = decoder.Decode(&response)
 	if err != nil {
-		return zero, fmt.Errorf("Error decoding API response - %w", err)
+		return zero, err
 	}
 	return response.Data, nil
 }
@@ -304,12 +304,12 @@ func (c *Client) GetAttachmentUrl(id string) (string, error) {
 	reqPayload := RequestPayload{ID: id}
 	req, err := c.newRequest("/attachments.redirect", reqPayload)
 	if err != nil {
-		return "", fmt.Errorf("Error creating request - %w", err)
+		return "", err
 	}
 
 	resp, err := c.httpClientNoRedirect.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("Error requesting Outline API - %w", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -318,7 +318,7 @@ func (c *Client) GetAttachmentUrl(id string) (string, error) {
 		decoder := json.NewDecoder(resp.Body)
 		err = decoder.Decode(&apiErr)
 		if err != nil {
-			return "", fmt.Errorf("Error decoding API error response - %w", err)
+			return "", err
 		}
 		return "", fmt.Errorf("Unexpected API http status - %d, %s", resp.StatusCode, apiErr.Error())
 	}
@@ -339,12 +339,12 @@ func (c *Client) unpublishDocument(id string) error {
 	reqPayload := RequestPayload{ID: id}
 	req, err := c.newRequest("/documents.unpublish", reqPayload)
 	if err != nil {
-		return fmt.Errorf("Error creating request - %w", err)
+		return err
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("Error requesting Outline API - %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -353,7 +353,7 @@ func (c *Client) unpublishDocument(id string) error {
 		decoder := json.NewDecoder(resp.Body)
 		err = decoder.Decode(&apiErr)
 		if err != nil {
-			return fmt.Errorf("Error decoding API error response - %w", err)
+			return err
 		}
 		return fmt.Errorf("Unexpected API http status - %d, %s", resp.StatusCode, apiErr.Error())
 	}

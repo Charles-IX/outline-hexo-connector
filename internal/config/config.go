@@ -12,6 +12,7 @@ type Config struct {
 	OutlineWebhookSecret         string `yaml:"Outline_Webhook_Secret"`
 	OutlineCollectionUsedForBlog string `yaml:"Outline_Collection_Used_For_Blog"`
 	HexoBuildTimeout             int    `yaml:"Hexo_Build_Timeout"`
+	HexoBuildCommand             string `yaml:"Hexo_Build_Command"`
 }
 
 func LoadConfig(path string) (*Config, error) {
