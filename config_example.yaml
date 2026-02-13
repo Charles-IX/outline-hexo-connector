@@ -2,5 +2,6 @@ Outline_API_Key: some_api_key
 Outline_API_URL: https://outline.example.com/api
 Outline_Webhook_Secret: some_webhook_secret
 Outline_Collection_Used_For_Blog: Blog
-Hexo_Build_Timeout: 30
+Hexo_Build_Interval: 30
 Hexo_Build_Command: hexo clean && hexo generate
+Hexo_Source_Post_Dir: hexo/source/_posts

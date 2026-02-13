@@ -194,7 +194,13 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		post.Tags = metadataAndText.Tags
 		post.Content = metadataAndText.Text
 
-		fmt.Printf("Converted blog content:\n%s\n", post.Content)
+		err := hexo.CreateHexoPost(c.cfg.HexoSourcePostDir, post)
+		if err != nil {
+			log.Printf("Error creating Hexo post - %v", err)
+			return
+		}
+		return
+
 		// TODO:
 		// Add the corresponding .md then trigger Hexo build. Or better,
 		// put it in a queue for a periodical Hexo build to consume.
