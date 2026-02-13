@@ -1,5 +1,9 @@
 package processor
 
-func convertAttachmentUrl(Text string) (string, error) {
+import (
+	"outline-hexo-connector/internal/outline"
+)
+
+func convertAttachmentUrl(Blog *outline.Document) (*outline.Document, error) {
 
 }

@@ -20,6 +20,7 @@ type DocumentPayload struct {
 	UpdatedAt        string `json:"updatedAt"`
 	CollectionID     string `json:"collectionId"`
 	ParentDocumentID string `json:"parentDocumentId"`
+	ParentDocument   *DocumentPayload
 }
 
 type CollectionPayload struct {
@@ -28,13 +29,13 @@ type CollectionPayload struct {
 }
 
 type Document struct {
-	ID         string
-	Title      string
-	Text       string
-	CreatedAt  string
-	UpdatedAt  string
-	Collection string
-	Tags       string
+	ID        string
+	Title     string
+	Text      string
+	CreatedAt string
+	UpdatedAt string
+	Category  string
+	Tags      string
 }
 
 type RequestPayload struct {

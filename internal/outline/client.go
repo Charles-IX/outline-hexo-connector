@@ -13,6 +13,7 @@ import (
 	"outline-hexo-connector/internal/config"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type Client struct {
 	cfg                  *config.Config
 	httpClient           *http.Client
 	httpClientNoRedirect *http.Client
+	justCreatedDocs      sync.Map
 }
 
 func NewClient(cfg *config.Config) *Client {
@@ -126,10 +128,14 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error fetching parent document info - %v", err)
 			return
 		}
-		fmt.Printf("Parent Name: %s\n", parentDocument.Title)
+		webhook.Payload.Model.ParentDocument = &parentDocument
+
 	} else {
-		fmt.Printf("Parent Name: null\n")
+		webhook.Payload.Model.ParentDocument = &DocumentPayload{
+			Title: "null",
+		}
 	}
+	fmt.Printf("Parent Name: %s\n", webhook.Payload.Model.ParentDocument.Title)
 
 	collection, err := c.GetCollection(webhook.Payload.Model.CollectionID)
 	if err != nil {
@@ -158,6 +164,15 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "documents.restore":
 		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
+		Blog := &Document{
+			ID:        webhook.Payload.Model.ID,
+			Title:     webhook.Payload.Model.Title,
+			Text:      webhook.Payload.Model.Text,
+			CreatedAt: webhook.Payload.Model.CreatedAt,
+			UpdatedAt: webhook.Payload.Model.UpdatedAt,
+			Category:  webhook.Payload.Model.ParentDocument.Title,
+		}
+		log.Printf("Document published - ID: %s, Title: %s, Category: %s", Blog.ID, Blog.Title, Blog.Category)
 		// TODO:
 		// Add the corresponding .md then trigger Hexo build. Or better,
 		// put it in a queue for a periodical Hexo build to consume.
@@ -266,7 +281,13 @@ func (c *Client) GetAttachmentUrl(id string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusFound {
-		return "", fmt.Errorf("Unexpected API response status - %d", resp.StatusCode)
+		var apiErr APIError
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&apiErr)
+		if err != nil {
+			return "", fmt.Errorf("Error decoding API error response - %w", err)
+		}
+		return "", fmt.Errorf("Unexpected API http status - %d, %s", resp.StatusCode, apiErr.Error())
 	}
 
 	location := resp.Header.Get("Location")
@@ -274,4 +295,29 @@ func (c *Client) GetAttachmentUrl(id string) (string, error) {
 		return "", fmt.Errorf("Missing Location header in API response")
 	}
 	return location, nil
+}
+
+func (c *Client) unpublishDocument(id string) error {
+	reqPayload := RequestPayload{ID: id}
+	req, err := c.newRequest("/documents.unpublish", reqPayload)
+	if err != nil {
+		return fmt.Errorf("Error creating request - %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("Error requesting Outline API - %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var apiErr APIError
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&apiErr)
+		if err != nil {
+			return fmt.Errorf("Error decoding API error response - %w", err)
+		}
+		return fmt.Errorf("Unexpected API http status - %d, %s", resp.StatusCode, apiErr.Error())
+	}
+	return nil
 }
