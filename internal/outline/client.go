@@ -24,9 +24,10 @@ type Client struct {
 	httpClient           *http.Client
 	httpClientNoRedirect *http.Client
 	justCreatedDocs      sync.Map
+	hexoTrigger          *hexo.Trigger
 }
 
-func NewClient(cfg *config.Config) *Client {
+func NewClient(cfg *config.Config, hexoTrigger *hexo.Trigger) *Client {
 	return &Client{
 		cfg: cfg,
 		httpClient: &http.Client{
@@ -38,6 +39,7 @@ func NewClient(cfg *config.Config) *Client {
 				return http.ErrUseLastResponse
 			},
 		},
+		hexoTrigger: hexoTrigger,
 	}
 }
 
@@ -173,6 +175,10 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "documents.unarchive":
 		fallthrough
 	case "documents.restore":
+		fallthrough
+	case "documents.move":
+		fallthrough
+	case "documents.title_change":
 		c.logWebhook(webhook)
 
 		post := &hexo.Post{
@@ -199,12 +205,8 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error creating Hexo post - %v", err)
 			return
 		}
-
+		c.hexoTrigger.TriggerBuild()
 		return
-
-		// TODO:
-		// Add the corresponding .md then trigger Hexo build. Or better,
-		// put it in a queue for a periodical Hexo build to consume.
 
 	case "documents.unpublish":
 		_, justCreated := c.justCreatedDocs.Load(webhook.Payload.Model.ID)
@@ -217,12 +219,20 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "documents.archive":
 		fallthrough
 	case "documents.delete":
-		log.Printf("This is a spaceholder to prevent my IDE from yelling.")
-		// TODO:
-		// Remove the corresponding .md then trigger Hexo build or set a flag
-		// and wait for the periodical Hexo build to consume.
+		err := hexo.RemoveHexoPost(c.cfg.HexoSourcePostDir, webhook.Payload.Model.ID)
+		if err != nil {
+			log.Printf("Error removing Hexo post - %v", err)
+			return
+		}
+		c.hexoTrigger.TriggerBuild()
+		return
 
 	case "documents.update":
+		if webhook.Payload.Model.PublishedAt == "" {
+			return
+		} else {
+			c.unpublishDocument(webhook.Payload.Model.ID)
+		}
 		return
 		// TODO:
 		// It's simple. Just treat it as a create event, and send documents.unpublish
@@ -234,12 +244,6 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		// We can use that to identify a draft.
 
 		// Thankfully one cannot update an archived document, so no need to check that.
-
-	// TODO:
-	// Better do something to handle documents.move and documents.title_change.
-	// I don't see any difference between these two and documents.publish,
-	// for we want to use Outline's document ID for Hexo's .md filename.
-	// Every "update" is indeed an overwrite handled by os.
 
 	default:
 		log.Printf("Unhandled event type - %s", webhook.Event)

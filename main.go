@@ -39,7 +39,7 @@ func main() {
 
 		hexoTrigger := hexo.NewTrigger(cfg)
 		hexoTrigger.Watch(ctx)
-		outlineClient := outline.NewClient(cfg)
+		outlineClient := outline.NewClient(cfg, hexoTrigger)
 		http.HandleFunc("/webhook", outlineClient.HandleWebhook)
 	}
 
