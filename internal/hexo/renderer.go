@@ -66,3 +66,13 @@ func CreateHexoPost(dir string, post *Post) error {
 	log.Printf("Hexo post created at %s", filePath)
 	return nil
 }
+
+func RemoveHexoPost(dir string, ID string) error {
+	filePath := filepath.Join(dir, ID+".md")
+	err := os.Remove(filePath)
+	if err != nil {
+		return err
+	}
+	log.Printf("Hexo post removed at %s", filePath)
+	return nil
+}

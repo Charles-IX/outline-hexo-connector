@@ -97,7 +97,7 @@ func (c *Client) parseWebhook(body []byte) (*Webhook, error) {
 }
 
 func (c *Client) logWebhook(webhook *Webhook) {
-	log.Println("Received webhook request:")
+	log.Printf("Received webhook request:")
 	fmt.Printf("Event: %s\nDocument ID: %s\nDocument Title: %s\n", webhook.Event, webhook.Payload.Model.ID, webhook.Payload.Model.Title)
 	fmt.Printf("Parent Name: %s\n", webhook.Payload.Model.ParentDocument.Title)
 	fmt.Printf("Collection Name: %s\n", webhook.Payload.Model.Collection.Name)
@@ -199,6 +199,7 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error creating Hexo post - %v", err)
 			return
 		}
+
 		return
 
 		// TODO:
@@ -241,7 +242,7 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Every "update" is indeed an overwrite handled by os.
 
 	default:
-		log.Printf("Unhandled event type: %s", webhook.Event)
+		log.Printf("Unhandled event type - %s", webhook.Event)
 	}
 }
 

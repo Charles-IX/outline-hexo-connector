@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"outline-hexo-connector/internal/config"
+	"outline-hexo-connector/internal/hexo"
 	"outline-hexo-connector/internal/outline"
 	"outline-hexo-connector/internal/test"
+	"syscall"
 
 	flag "github.com/spf13/pflag"
 )
@@ -18,9 +24,12 @@ func main() {
 	configFile := flag.StringP("config", "c", "config.yaml", "Path to config file")
 	flag.Parse()
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	if *isTestMode {
 		http.HandleFunc("/webhook", test.PrintWebhook)
-		log.Println("Running in test mode - Print raw incoming requests only")
+		log.Printf("Running in test mode - Print raw incoming requests only")
 	} else {
 		cfg, err := config.LoadConfig(*configFile)
 		if err != nil {
@@ -28,12 +37,21 @@ func main() {
 		}
 		log.Printf("Config loaded from %s", *configFile)
 
+		hexoTrigger := hexo.NewTrigger(cfg)
+		hexoTrigger.Watch(ctx)
 		outlineClient := outline.NewClient(cfg)
 		http.HandleFunc("/webhook", outlineClient.HandleWebhook)
 	}
 
-	log.Printf("Webhook listener started at port %s...", *port)
-	if err := http.ListenAndServe(":"+*port, nil); err != nil {
-		log.Fatalf("Error starting server - %v", err)
-	}
+	log.Printf("Webhook listener started at port %s", *port)
+	go func() {
+		err := http.ListenAndServe(":"+*port, nil)
+		if err != nil && err != http.ErrServerClosed {
+			log.Printf("Error starting server - %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	fmt.Println()
+	log.Printf("Stop listening for Outline webhook requests")
 }
