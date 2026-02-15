@@ -37,6 +37,9 @@ func ExtractMetadataAndText(text string) *MetadataAndText {
 		metadataAndText.Text = reIndex.ReplaceAllString(metadataAndText.Text, "[REMOVED]")
 	}
 
+	reMore := regexp.MustCompile(`(?m)^\\?\+>\s*More:.*$`)
+	metadataAndText.Text = reMore.ReplaceAllString(metadataAndText.Text, "<!-- more -->")
+
 	// Extract tags from the line starting with "+> Tags: "
 	reTags := regexp.MustCompile(`(?m)^\\?\+>\s*Tags:\s*(.*)$`)
 	if match := reTags.FindStringSubmatch(text); len(match) > 1 {
