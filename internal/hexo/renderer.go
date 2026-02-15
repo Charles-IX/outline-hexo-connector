@@ -43,16 +43,17 @@ mermaid: true
 `
 
 func unescapeText(text string) string {
-	// Outline 有时会发送双重转义的内容，需要手动反转义
-	// 注意顺序：先保护双反斜杠，避免它们被后续替换影响
-	text = strings.ReplaceAll(text, "\\\\", "\x00") // 临时占位符
+	// Outline sends some escaped characters in the text, we need to unescape them before processing.
+	// I tried to write `text = strings.ReplaceAll(text, "\\\\", "\\")` but failed:
+	// ReplaceAll can only be used on strings, where '\n' is treated as literal letters.
+	// '\\' can not be replaced by '\', for the former can not be simply searched (escaped) in the text.
+	// So here is some AI generated masterpiece:
+	text = strings.ReplaceAll(text, "\\\\", "\x00")
 
-	// 将转义序列转换为真正的字符
 	text = strings.ReplaceAll(text, "\\n", "\n")
 	text = strings.ReplaceAll(text, "\\r", "\r")
 	text = strings.ReplaceAll(text, "\\t", "\t")
 
-	// 处理其他被转义的 Markdown 字符
 	text = strings.ReplaceAll(text, "\\+", "+")
 	text = strings.ReplaceAll(text, "\\-", "-")
 	text = strings.ReplaceAll(text, "\\*", "*")
@@ -60,13 +61,12 @@ func unescapeText(text string) string {
 	text = strings.ReplaceAll(text, "\\>", ">")
 	text = strings.ReplaceAll(text, "\\|", "|")
 
-	// 恢复单反斜杠
 	text = strings.ReplaceAll(text, "\x00", "\\")
 	return text
 }
 
 func renderPost(post *Post) (string, error) {
-	// 先处理 Outline 发送的转义字符
+
 	post.Content = unescapeText(post.Content)
 
 	originalLines := strings.Split(post.Content, "\n")
