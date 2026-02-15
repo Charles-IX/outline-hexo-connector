@@ -10,16 +10,18 @@ import (
 )
 
 type Trigger struct {
-	cfg         *config.Config
-	ch          chan struct{}
-	lastTrigger time.Time
+	cfg             *config.Config
+	timer           *time.Timer
+	timerCh         <-chan time.Time
+	triggerCh       chan struct{}
+	lastTriggerTime time.Time
+	pending         bool
 }
 
 func NewTrigger(cfg *config.Config) *Trigger {
 	return &Trigger{
-		cfg:         cfg,
-		ch:          make(chan struct{}, 1),
-		lastTrigger: time.Now(),
+		cfg:       cfg,
+		triggerCh: make(chan struct{}, 1),
 	}
 }
 
@@ -28,24 +30,50 @@ func (t *Trigger) Watch(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
+				if t.timer != nil {
+					t.timer.Stop()
+				}
 				log.Printf("Stop watching for Hexo build triggers")
 				return
-			case <-t.ch:
-				log.Printf("Trigger received - Starting Hexo build")
-				t.lastTrigger = time.Now()
-				err := t.build()
-				if err != nil {
-					log.Printf("Error building Hexo - %v", err)
+
+			case <-t.triggerCh:
+				if t.timer == nil {
+					log.Printf("Trigger received - Starting Hexo build")
+					err := t.build()
+					if err != nil {
+						log.Printf("Error building Hexo - %v", err)
+					} else {
+						log.Printf("Hexo build completed")
+					}
+
+					t.timer = time.NewTimer(time.Duration(t.cfg.HexoBuildInterval) * time.Second)
+					t.timerCh = t.timer.C
+					t.lastTriggerTime = time.Now()
+					t.pending = false
+
 				} else {
-					log.Printf("Hexo build completed")
+					t.pending = true
+					remaining := time.Until(t.lastTriggerTime.Add(time.Duration(t.cfg.HexoBuildInterval) * time.Second))
+					log.Printf("Trigger pending - Will build after %v", remaining)
 				}
 
-				select {
-				case <-ctx.Done():
-					log.Printf("Stop watching for Hexo build triggers")
-					return
-				case <-time.After(time.Duration(t.cfg.HexoBuildInterval)):
-					t.flush()
+			case <-t.timerCh:
+				if t.pending {
+					log.Printf("Trigger timer expired with pending tasks - Starting Hexo build")
+					err := t.build()
+					if err != nil {
+						log.Printf("Error building Hexo - %v", err)
+					} else {
+						log.Printf("Hexo build completed")
+					}
+
+					t.timer.Reset(time.Duration(t.cfg.HexoBuildInterval) * time.Second)
+					t.lastTriggerTime = time.Now()
+					t.pending = false
+				} else {
+					log.Printf("Trigger timer expired with no pending tasks - Back to idle")
+					t.timer = nil
+					t.timerCh = nil
 				}
 			}
 		}
@@ -54,16 +82,10 @@ func (t *Trigger) Watch(ctx context.Context) {
 
 func (t *Trigger) TriggerBuild() {
 	select {
-	case t.ch <- struct{}{}:
+	case t.triggerCh <- struct{}{}:
 	default:
-		log.Printf("Trigger pending - Next Hexo build will run after %v", time.Duration(t.cfg.HexoBuildInterval)-time.Since(t.lastTrigger))
-	}
-}
-
-func (t *Trigger) flush() {
-	select {
-	case <-t.ch:
-	default:
+		remaining := time.Until(t.lastTriggerTime.Add(time.Duration(t.cfg.HexoBuildInterval) * time.Second))
+		log.Printf("Trigger pending - Will build after %v", remaining)
 	}
 }
 
