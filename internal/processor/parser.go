@@ -17,7 +17,13 @@ func ExtractMetadataAndText(text string) *MetadataAndText {
 		Text: text,
 	}
 
-	// We want picture which alt text is banner_img or index_img
+	// We want picture which alt text is banner_img or index_img or banner_index_img
+	reBannerAndIndex := regexp.MustCompile(`!\[banner_index_img\]\((.*?)\)`)
+	if match := reBannerAndIndex.FindStringSubmatch(text); len(match) > 1 {
+		metadataAndText.BannerImg = match[1]
+		metadataAndText.Text = reBannerAndIndex.ReplaceAllString(metadataAndText.Text, "[REMOVED]")
+	}
+
 	reBanner := regexp.MustCompile(`!\[banner_img\]\((.*?)\)`)
 	if match := reBanner.FindStringSubmatch(text); len(match) > 1 {
 		metadataAndText.BannerImg = match[1]
