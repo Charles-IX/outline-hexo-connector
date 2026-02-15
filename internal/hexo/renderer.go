@@ -21,6 +21,7 @@ type Post struct {
 	Content   string
 	Math      bool
 	Mermaid   bool
+	Archive   bool
 }
 
 const postTemplate = `---
@@ -37,6 +38,7 @@ banner_img: {{.BannerImg}}
 index_img: {{.IndexImg}}
 math: true
 mermaid: true
+archive: {{.Archive}}
 ---
 
 {{.Content}}

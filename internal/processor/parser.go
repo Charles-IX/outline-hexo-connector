@@ -10,6 +10,7 @@ type MetadataAndText struct {
 	IndexImg  string
 	Tags      []string
 	Text      string
+	Archive   bool
 }
 
 func ExtractMetadataAndText(text string) *MetadataAndText {
@@ -53,6 +54,12 @@ func ExtractMetadataAndText(text string) *MetadataAndText {
 		}
 
 		metadataAndText.Text = reTags.ReplaceAllString(metadataAndText.Text, "[REMOVED]")
+	}
+
+	reArchive := regexp.MustCompile(`(?m)^\\?\+>\s*Archived\s*$`)
+	if reArchive.MatchString(metadataAndText.Text) {
+		metadataAndText.Archive = true
+		metadataAndText.Text = reArchive.ReplaceAllString(metadataAndText.Text, "[REMOVED]")
 	}
 
 	// I hate regex. Why ReplaceAllString(Text, "") would always leaves an empty line?

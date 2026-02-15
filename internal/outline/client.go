@@ -170,6 +170,10 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch webhook.Event {
 	case "documents.create":
 		c.logWebhook(webhook)
+		if webhook.Payload.Model.ParentDocumentID == "" {
+			log.Printf("Document has no parent - Skipping")
+			return
+		}
 		c.justCreatedOrUpdated.Store(webhook.Payload.Model.ID, true)
 		go c.unpublishDocument(webhook.Payload.Model.ID)
 		time.AfterFunc(time.Second*10, func() {
@@ -191,6 +195,10 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "documents.title_change":
 		c.logWebhook(webhook)
+		if webhook.Payload.Model.ParentDocumentID == "" {
+			log.Printf("Document has no parent - Skipping")
+			return
+		}
 
 		post := &hexo.Post{
 			ID:       webhook.Payload.Model.ID,
@@ -209,6 +217,7 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		post.BannerImg = metadataAndText.BannerImg
 		post.IndexImg = metadataAndText.IndexImg
 		post.Tags = metadataAndText.Tags
+		post.Archive = metadataAndText.Archive
 		post.Content = metadataAndText.Text
 
 		err := hexo.CreateHexoPost(c.cfg.HexoSourcePostDir, post)
@@ -231,6 +240,10 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "documents.delete":
 		c.logWebhook(webhook)
+		if webhook.Payload.Model.ParentDocumentID == "" {
+			log.Printf("Document has no parent - Skipping")
+			return
+		}
 
 		err := hexo.RemoveHexoPost(c.cfg.HexoSourcePostDir, webhook.Payload.Model.ID)
 		if err != nil {
@@ -241,6 +254,9 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case "documents.update":
+		if webhook.Payload.Model.ParentDocumentID == "" {
+			return
+		}
 		if webhook.Payload.Model.PublishedAt == "" {
 			return
 		} else {
