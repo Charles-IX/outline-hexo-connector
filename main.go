@@ -46,7 +46,7 @@ func main() {
 	go func() {
 		err := http.ListenAndServe(":"+*port, nil)
 		if err != nil && err != http.ErrServerClosed {
-			log.Printf("Error starting server - %v", err)
+			log.Fatalf("Error starting server - %v", err)
 		}
 	}()
 
