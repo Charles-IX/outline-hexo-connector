@@ -42,13 +42,13 @@ func main() {
 		http.HandleFunc("/webhook", outlineClient.HandleWebhook)
 	}
 
-	log.Printf("Webhook listener started at port %s", *port)
 	go func() {
 		err := http.ListenAndServe(":"+*port, nil)
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Error starting server - %v", err)
 		}
 	}()
+	log.Printf("Webhook listener started at port %s", *port)
 
 	<-ctx.Done()
 	log.Printf("Stop listening for Outline webhook requests")
