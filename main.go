@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -52,6 +51,5 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	fmt.Println()
 	log.Printf("Stop listening for Outline webhook requests")
 }

@@ -23,7 +23,7 @@ type Client struct {
 	cfg                  *config.Config
 	httpClient           *http.Client
 	httpClientNoRedirect *http.Client
-	justCreatedDocs      sync.Map
+	justCreatedOrUpdated sync.Map
 	hexoTrigger          *hexo.Trigger
 }
 
@@ -105,6 +105,17 @@ func (c *Client) logWebhook(webhook *Webhook) {
 	fmt.Printf("Collection Name: %s\n", webhook.Payload.Model.Collection.Name)
 }
 
+func formatRFC3339Time(ts string) string {
+	if ts == "" {
+		return ts
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		return ts
+	}
+	return parsed.In(time.Local).Format("2006-01-02T15:04:05.000")
+}
+
 func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 10*1024*1024))
 	if err != nil {
@@ -159,14 +170,14 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch webhook.Event {
 	case "documents.create":
 		c.logWebhook(webhook)
-		c.justCreatedDocs.Store(webhook.Payload.Model.ID, true)
+		c.justCreatedOrUpdated.Store(webhook.Payload.Model.ID, true)
 		go c.unpublishDocument(webhook.Payload.Model.ID)
 		time.AfterFunc(time.Second*10, func() {
-			c.justCreatedDocs.Delete(webhook.Payload.Model.ID)
+			c.justCreatedOrUpdated.Delete(webhook.Payload.Model.ID)
 		})
 
 	case "documents.publish":
-		_, justCreated := c.justCreatedDocs.Load(webhook.Payload.Model.ID)
+		_, justCreated := c.justCreatedOrUpdated.Load(webhook.Payload.Model.ID)
 		if justCreated {
 			log.Printf("Document just created - Ignoring publish event")
 			return
@@ -184,8 +195,8 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		post := &hexo.Post{
 			ID:       webhook.Payload.Model.ID,
 			Title:    webhook.Payload.Model.Title,
-			Date:     webhook.Payload.Model.CreatedAt,
-			Updated:  webhook.Payload.Model.UpdatedAt,
+			Date:     formatRFC3339Time(webhook.Payload.Model.CreatedAt),
+			Updated:  formatRFC3339Time(webhook.Payload.Model.UpdatedAt),
 			Category: webhook.Payload.Model.ParentDocument.Title,
 			Content:  webhook.Payload.Model.Text,
 		}
@@ -209,16 +220,18 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case "documents.unpublish":
-		_, justCreated := c.justCreatedDocs.Load(webhook.Payload.Model.ID)
+		_, justCreated := c.justCreatedOrUpdated.Load(webhook.Payload.Model.ID)
 		if justCreated {
-			log.Printf("Document just created - Ignoring unpublish event")
-			c.justCreatedDocs.Delete(webhook.Payload.Model.ID)
+			log.Printf("Document just created or updated - Ignoring unpublish event")
+			c.justCreatedOrUpdated.Delete(webhook.Payload.Model.ID)
 			return
 		}
 		fallthrough
 	case "documents.archive":
 		fallthrough
 	case "documents.delete":
+		c.logWebhook(webhook)
+
 		err := hexo.RemoveHexoPost(c.cfg.HexoSourcePostDir, webhook.Payload.Model.ID)
 		if err != nil {
 			log.Printf("Error removing Hexo post - %v", err)
@@ -231,19 +244,13 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		if webhook.Payload.Model.PublishedAt == "" {
 			return
 		} else {
+			c.justCreatedOrUpdated.Store(webhook.Payload.Model.ID, true)
 			c.unpublishDocument(webhook.Payload.Model.ID)
+			time.AfterFunc(time.Second*10, func() {
+				c.justCreatedOrUpdated.Delete(webhook.Payload.Model.ID)
+			})
 		}
 		return
-		// TODO:
-		// It's simple. Just treat it as a create event, and send documents.unpublish
-		// to Outline API so that we don't send some draft version to Hexo.
-		// Let draft be draft. But are we going to unpublish it in Hexo?
-		// If implemented, we can use documents.archive
-		// Or documets.move or documents.delete to unpublish in Hexo.
-		// Drafts also send documents.update event. But draft's webhook has "publishedAt": null
-		// We can use that to identify a draft.
-
-		// Thankfully one cannot update an archived document, so no need to check that.
 
 	default:
 		log.Printf("Unhandled event type - %s", webhook.Event)
