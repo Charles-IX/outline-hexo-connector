@@ -150,10 +150,10 @@ Connector 目前支持监听并处理以下 Outline Webhook 事件：
 3. 创建新的 Webhook：
    - **URL**: `http://Outline-Hexo-Connector的IP:端口/webhook`
    - **Secret**: 复制到 `config.yaml` 中的 `Outline_Webhook_Secret`
-   - **Events**: 选择需要监听的事件类型，建议包含 documents.create, documents.publish, documents.unpublish, documents.delete, documents.archive, documents.unarchive, documents.restore, documents.move, documents.update, documents.title_change
+   - **Events**: 选择需要监听的事件类型，建议包含 `documents.create`, `documents.publish`, `documents.unpublish`, `documents.delete`, `documents.archive`, `documents.unarchive`, `documents.restore`, `documents.move`, `documents.update`, `documents.title_change`
 4. 进入 **偏好设置** → **API 与应用程序**
 5. 创建新的 API 密钥：
-   - **作用域**: 至少需要 documents.info, documents.unpublish, collections.info, attachments.redirect
+   - **作用域**: 至少需要 `documents.info`, `documents.unpublish`, `collections.info`, `attachments.redirect`
    - **过期时间**: 根据自己需求而定
    - 将创建好的 API 密钥复制到 `config.yaml` 中的 `Outline_API_Key`
 
@@ -262,10 +262,8 @@ outline-hexo-connector/
 - [x] 添加附件 URL 转换功能（从Outline API转到OSS永久链接）
 - [x] 实现文档发布/删除时的 Hexo 构建触发
 - [x] 添加文档队列机制，支持定期批量构建
-- [ ] 添加单元测试
+- [ ] 添加单元测试（也许）
 - [x] 完善错误处理和日志记录
-- [ ] 支持数据库存储文档映射关系（存疑）
-- [ ] 添加 Docker 支持
 
 ## 🤝 贡献
 

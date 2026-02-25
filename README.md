@@ -150,7 +150,7 @@ Default start (uses `config.yaml` and listens on port 9000):
 3. Create a new Webhook:
    - **URL**: `http://Outline-Hexo-Connector-IP:Port/webhook`
    - **Secret**: Copy to `Outline_Webhook_Secret` in `config.yaml`
-   - **Events**: Select events to listen to. Recommended: documents.create, documents.publish, documents.unpublish, documents.delete, documents.archive, documents.unarchive, documents.restore, documents.move, documents.update, documents.title_change
+   - **Events**: Select events to listen to. Recommended: `documents.create`, `documents.publish`, `documents.unpublish`, `documents.delete`, `documents.archive`, `documents.unarchive`, `documents.restore`, `documents.move`, `documents.update`, `documents.title_change`
 4. Go to **Settings** → **API & Tokens**.
 5. Create a new API Token:
    - **Scopes**: At least `documents.info`, `documents.unpublish`, `collections.info`, `attachments.redirect`
@@ -262,10 +262,8 @@ Then trigger a test event from Outline, and you will see the full request conten
 - [x] Add attachment URL conversion (from Outline API to OSS permanent link)
 - [x] Trigger Hexo build on document publish/delete
 - [x] Add document queue mechanism to support periodic batch builds
-- [ ] Add unit tests
+- [ ] Add unit tests (Maybe)
 - [x] Refine error handling and logging
-- [ ] Support database storage for document mapping relationships (TBD)
-- [ ] Add Docker support
 
 ## 🤝 Contribution
 
