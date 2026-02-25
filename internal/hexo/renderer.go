@@ -46,22 +46,10 @@ archive: {{.Archive}}
 
 func unescapeText(text string) string {
 	// Outline sends some escaped characters in the text, we need to unescape them before processing.
-	// I tried to write `text = strings.ReplaceAll(text, "\\\\", "\\")` but failed:
-	// ReplaceAll can only be used on strings, where '\n' is treated as literal letters.
-	// '\\' can not be replaced by '\', for the former can not be simply searched (escaped) in the text.
-	// So here is some AI generated masterpiece:
 	text = strings.ReplaceAll(text, "\\\\", "\x00")
 
-	text = strings.ReplaceAll(text, "\\n", "\n")
-	text = strings.ReplaceAll(text, "\\r", "\r")
-	text = strings.ReplaceAll(text, "\\t", "\t")
-
-	text = strings.ReplaceAll(text, "\\+", "+")
-	text = strings.ReplaceAll(text, "\\-", "-")
-	text = strings.ReplaceAll(text, "\\*", "*")
-	text = strings.ReplaceAll(text, "\\#", "#")
-	text = strings.ReplaceAll(text, "\\>", ">")
-	text = strings.ReplaceAll(text, "\\|", "|")
+	text = strings.ReplaceAll(text, "\\\n", "\n")
+	text = strings.ReplaceAll(text, "\\n", "<br>\n")
 
 	text = strings.ReplaceAll(text, "\x00", "\\")
 	return text
