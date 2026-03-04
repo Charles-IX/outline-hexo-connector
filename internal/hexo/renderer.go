@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 )
@@ -44,19 +45,41 @@ archive: {{.Archive}}
 {{.Content}}
 `
 
+var (
+	codeBlockRe = regexp.MustCompile(`(?s)(~{3,}.*?~{3,}|\x60{3,}.*?\x60{3,}|\x60.*?\x60)`)
+	newlineRe   = regexp.MustCompile(`([^\x00]|^)(\\n|\\\n)`)
+)
+
 func unescapeText(text string) string {
 	// Outline sends some escaped characters in the text, we need to unescape them before processing.
+	// However, characters in Markdown code blocks should be treated as is.
+	lastEnd := 0
+	var result strings.Builder
+	matches := codeBlockRe.FindAllStringIndex(text, -1)
+
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		outsideText := text[lastEnd:start]
+		result.WriteString(renderNewline(outsideText))
+		result.WriteString(text[start:end])
+		lastEnd = end
+	}
+
+	result.WriteString(renderNewline(text[lastEnd:]))
+	return result.String()
+}
+
+func renderNewline(text string) string {
 	text = strings.ReplaceAll(text, "\\\\", "\x00")
 
-	text = strings.ReplaceAll(text, "\\\n", "\n")
-	text = strings.ReplaceAll(text, "\\n", "<br>\n")
+	re := regexp.MustCompile(`([^\x00]|^)(\\n|\\\n)`)
+	text = re.ReplaceAllString(text, "$1\n")
 
-	text = strings.ReplaceAll(text, "\x00", "\\")
+	text = strings.ReplaceAll(text, "\x00", "\\\\")
 	return text
 }
 
 func renderPost(post *Post) (string, error) {
-
 	post.Content = unescapeText(post.Content)
 
 	originalLines := strings.Split(post.Content, "\n")
