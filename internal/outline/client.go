@@ -254,17 +254,19 @@ func (c *Client) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case "documents.update":
-		if webhook.Payload.Model.ParentDocumentID == "" {
-			return
-		}
-		if webhook.Payload.Model.PublishedAt == "" {
-			return
-		} else {
-			c.justCreatedOrUpdated.Store(webhook.Payload.Model.ID, true)
-			c.unpublishDocument(webhook.Payload.Model.ID)
-			time.AfterFunc(time.Second*10, func() {
-				c.justCreatedOrUpdated.Delete(webhook.Payload.Model.ID)
-			})
+		if c.cfg.OutlineUnpublishWhenUpdated {
+			if webhook.Payload.Model.ParentDocumentID == "" {
+				return
+			}
+			if webhook.Payload.Model.PublishedAt == "" {
+				return
+			} else {
+				c.justCreatedOrUpdated.Store(webhook.Payload.Model.ID, true)
+				c.unpublishDocument(webhook.Payload.Model.ID)
+				time.AfterFunc(time.Second*10, func() {
+					c.justCreatedOrUpdated.Delete(webhook.Payload.Model.ID)
+				})
+			}
 		}
 		return
 

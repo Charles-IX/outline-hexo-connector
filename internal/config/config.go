@@ -11,6 +11,7 @@ type Config struct {
 	OutlineAPIURL                string `yaml:"Outline_API_URL"`
 	OutlineWebhookSecret         string `yaml:"Outline_Webhook_Secret"`
 	OutlineCollectionUsedForBlog string `yaml:"Outline_Collection_Used_For_Blog"`
+	OutlineUnpublishWhenUpdated  bool   `yaml:"Outline_Unpublish_When_Updated"`
 	HexoBuildInterval            int    `yaml:"Hexo_Build_Interval"`
 	HexoBuildCommand             string `yaml:"Hexo_Build_Command"`
 	HexoSourcePostDir            string `yaml:"Hexo_Source_Post_Dir"`
