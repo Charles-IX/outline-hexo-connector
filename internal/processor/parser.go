@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -62,8 +63,36 @@ func ExtractMetadataAndText(text string) *MetadataAndText {
 		metadataAndText.Text = reArchive.ReplaceAllString(metadataAndText.Text, "[REMOVED]")
 	}
 
+	reAdmonition := regexp.MustCompile(`(?ms)^:::([a-zA-Z0-9_-]+)[ \t]*\n(.*?)\n:::[ \t]*$`)
+	metadataAndText.Text = reAdmonition.ReplaceAllStringFunc(metadataAndText.Text, func(match string) string {
+		submatches := reAdmonition.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+
+		noteType := toHexoNoteType(submatches[1])
+		body := submatches[2]
+
+		return fmt.Sprintf("{%% note %s %%}\n%s\n{%% endnote %%}", noteType, body)
+	})
+
 	// I hate regex. Why ReplaceAllString(Text, "") would always leaves an empty line?
 	// Or maybe I just suck at regex.
 
 	return metadataAndText
+}
+
+func toHexoNoteType(rawType string) string {
+	switch strings.ToLower(strings.TrimSpace(rawType)) {
+	case "success":
+		return "success"
+	case "warning":
+		return "warning"
+	case "tip":
+		return "primary"
+	case "info":
+		return "info"
+	default:
+		return "primary"
+	}
 }
