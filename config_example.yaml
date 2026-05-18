@@ -6,3 +6,6 @@ Outline_Unpublish_When_Updated: false
 Hexo_Build_Interval: 30
 Hexo_Build_Command: hexo clean && hexo generate
 Hexo_Source_Post_Dir: hexo/source/_posts
+Direct_Access_Mode: html
+Direct_Access_Proxy_Target: http://127.0.0.1:1313
+Direct_Access_HTML_File: ""

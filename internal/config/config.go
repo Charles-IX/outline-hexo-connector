@@ -15,6 +15,9 @@ type Config struct {
 	HexoBuildInterval            int    `yaml:"Hexo_Build_Interval"`
 	HexoBuildCommand             string `yaml:"Hexo_Build_Command"`
 	HexoSourcePostDir            string `yaml:"Hexo_Source_Post_Dir"`
+	DirectAccessMode             string `yaml:"Direct_Access_Mode"`
+	DirectAccessProxyTarget      string `yaml:"Direct_Access_Proxy_Target"`
+	DirectAccessHTMLFile         string `yaml:"Direct_Access_HTML_File"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -28,6 +31,10 @@ func LoadConfig(path string) (*Config, error) {
 	d := yaml.NewDecoder(file)
 	if err := d.Decode(&config); err != nil {
 		return nil, err
+	}
+
+	if config.DirectAccessMode == "" {
+		config.DirectAccessMode = "html"
 	}
 
 	return config, nil

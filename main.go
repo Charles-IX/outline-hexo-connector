@@ -9,6 +9,7 @@ import (
 	"outline-hexo-connector/internal/config"
 	"outline-hexo-connector/internal/hexo"
 	"outline-hexo-connector/internal/outline"
+	"outline-hexo-connector/internal/server"
 	"outline-hexo-connector/internal/test"
 	"syscall"
 
@@ -26,8 +27,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	var webhookPostHandler http.HandlerFunc
+	var directAccessHandler http.Handler
+
 	if *isTestMode {
-		http.HandleFunc("/webhook", test.PrintWebhook)
+		webhookPostHandler = test.PrintWebhook
+		handler, err := server.NewDirectAccessHandler(nil)
+		if err != nil {
+			log.Fatalf("Error creating direct access handler - %v", err)
+		}
+		directAccessHandler = handler
 		log.Printf("Running in test mode - Print raw incoming requests only")
 	} else {
 		cfg, err := config.LoadConfig(*configFile)
@@ -39,8 +48,26 @@ func main() {
 		hexoTrigger := hexo.NewTrigger(cfg)
 		hexoTrigger.Watch(ctx)
 		outlineClient := outline.NewClient(cfg, hexoTrigger)
-		http.HandleFunc("/webhook", outlineClient.HandleWebhook)
+		webhookPostHandler = outlineClient.HandleWebhook
+		handler, err := server.NewDirectAccessHandler(cfg)
+		if err != nil {
+			log.Fatalf("Error creating direct access handler - %v", err)
+		}
+		directAccessHandler = handler
 	}
+
+	http.Handle("/", directAccessHandler)
+	http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			webhookPostHandler(w, r)
+		case http.MethodGet, http.MethodHead:
+			directAccessHandler.ServeHTTP(w, r)
+		default:
+			w.Header().Set("Allow", "POST, GET, HEAD")
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	go func() {
 		err := http.ListenAndServe(":"+*port, nil)

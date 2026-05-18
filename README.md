@@ -71,6 +71,15 @@ Hexo_Build_Command: hexo clean && hexo generate
 
 # Hexo post directory (where synced Markdown files are written)
 Hexo_Source_Post_Dir: hexo/source/_posts
+
+# Browser direct-access behavior: html | proxy | disabled
+Direct_Access_Mode: html
+
+# Proxy target when Direct_Access_Mode=proxy
+Direct_Access_Proxy_Target: http://127.0.0.1:1313
+
+# Custom HTML file when Direct_Access_Mode=html (optional)
+Direct_Access_HTML_File: ""
 ```
 
 ### Configuration Details
@@ -84,6 +93,16 @@ Hexo_Source_Post_Dir: hexo/source/_posts
 | `Hexo_Build_Interval` | Minimum interval for Hexo builds (seconds), for debouncing | ✅ |
 | `Hexo_Build_Command` | Shell command to execute Hexo build | ✅ |
 | `Hexo_Source_Post_Dir` | Path to Hexo blog's `source/_posts` directory | ✅ |
+| `Direct_Access_Mode` | Behavior for direct browser access to service port: `html`, `proxy`, or `disabled` | ✅ |
+| `Direct_Access_Proxy_Target` | Local target URL when `Direct_Access_Mode=proxy` | ⚠️ Required in proxy mode |
+| `Direct_Access_HTML_File` | Optional custom HTML file path when `Direct_Access_Mode=html` | Optional |
+
+### Direct Browser Access
+
+- `POST /webhook`: keeps strict signature verification (for Outline delivery)
+- `GET/HEAD /webhook`: returns configured HTML page or reverse-proxies to local target
+- `GET /`: same direct-access behavior as above
+- Other methods on `/webhook`: returns `405 Method Not Allowed`
 
 ### Supported Event Types
 
@@ -234,6 +253,8 @@ outline-hexo-connector/
     ├── processor/
     │   ├── converter.go    # Attachment URL conversion and processing
     │   └── parser.go       # Markdown content parsing and metadata extraction
+    ├── server/
+    │   └── direct_access.go # Direct browser access handling (HTML/proxy)
     └── test/
         └── test.go         # Testing tools and debug helpers
 ```

@@ -71,6 +71,15 @@ Hexo_Build_Command: hexo clean && hexo generate
 
 # Hexo 文章存放目录（用于写入同步的 Markdown 文件）
 Hexo_Source_Post_Dir: hexo/source/_posts
+
+# 浏览器直连服务端口时的行为：html | proxy | disabled
+Direct_Access_Mode: html
+
+# 当 Direct_Access_Mode=proxy 时反向代理目标地址
+Direct_Access_Proxy_Target: http://127.0.0.1:1313
+
+# 当 Direct_Access_Mode=html 时可选的自定义 HTML 文件路径
+Direct_Access_HTML_File: ""
 ```
 
 ### 配置说明
@@ -84,6 +93,16 @@ Hexo_Source_Post_Dir: hexo/source/_posts
 | `Hexo_Build_Interval` | Hexo 构建触发的最小间隔时间（秒），用于防抖 | ✅ |
 | `Hexo_Build_Command` | 执行 Hexo 构建的 Shell 命令 | ✅ |
 | `Hexo_Source_Post_Dir` | Hexo 博客的 `source/_posts` 目录路径 | ✅ |
+| `Direct_Access_Mode` | 浏览器直接访问服务端口时的处理方式：`html`、`proxy`、`disabled` | ✅ |
+| `Direct_Access_Proxy_Target` | 当 `Direct_Access_Mode=proxy` 时的本地目标地址 | ⚠️ 仅 proxy 模式必填 |
+| `Direct_Access_HTML_File` | 当 `Direct_Access_Mode=html` 时可选的自定义 HTML 文件路径 | 可选 |
+
+### 浏览器直连访问行为
+
+- `POST /webhook`：保持严格签名校验（用于 Outline Webhook）
+- `GET/HEAD /webhook`：返回配置的 HTML 页面或反向代理到本地目标
+- `GET /`：与上面相同的直连访问逻辑
+- `/webhook` 的其他方法：返回 `405 Method Not Allowed`
 
 ### 支持的事件类型
 
@@ -234,6 +253,8 @@ outline-hexo-connector/
     ├── processor/
     │   ├── converter.go    # 附件 URL 转换与处理
     │   └── parser.go       # Markdown 内容解析与元数据提取
+    ├── server/
+    │   └── direct_access.go # 浏览器直连访问处理（HTML/反向代理）
     └── test/
         └── test.go         # 测试工具与 Debug 辅助
 ```
